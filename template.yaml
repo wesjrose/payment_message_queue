@@ -45,7 +45,36 @@ Resources:
               - ReportBatchItemFailures     
       DeadLetterQueue:
         Type: SQS
-        TargetArn: !GetAtt ProcessingDLQ.Arn                     
+        TargetArn: !GetAtt ProcessingDLQ.Arn
+
+  DLQAlertTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      DisplayName: "Payment DLQ Alert"
+      Subscription:
+        - Protocol: email
+          Endpoint: wesjrose@gmail.com
+
+  DLQMessagesAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub "${AWS::StackName}-dlq-not-empty"
+      AlarmDescription: "Messages have landed in the payment processing processing DLQ"
+      Namespace: AWS/SQS
+      MetricName: ApproximateNumberOfMessagesVisible
+      Dimensions:
+        - Name: QueueName
+          Value: !GetAtt ProcessingDLQ.QueueName
+      Statistic: Maximum
+      Period: 60
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref DLQAlertTopic
+      OKActions:
+        - !Ref DLQAlertTopic                  
 
 Outputs:
   ProcessorFunctionName:
